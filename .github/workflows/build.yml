@@ -1,0 +1,23 @@
+name: Build and Release
+on:
+  push:
+    branches: [ main ]
+    tags: ['v*']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+    - run: dotnet publish -c Release --self-contained -p:PublishSingleFile=true -o publish
+    - uses: actions/upload-artifact@v4
+      with:
+        name: TrailerDisplayTest
+        path: publish/TrailerDisplayTest.exe
+    - if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: publish/TrailerDisplayTest.exe
