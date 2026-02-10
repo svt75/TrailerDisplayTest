@@ -26,7 +26,7 @@ public partial class MainForm : Form
         {
             using var client = new TcpClient();
             client.Connect(ip, port);
-            var data = Encoding.UTF8.GetBytes(json);
+            var data = Encoding.UTF8.GetBytes(json + System.Environment.NewLine);
             client.GetStream().Write(data, 0, data.Length);
             Log($"TCP {ip}:{port} -> {json}");
             return true;
