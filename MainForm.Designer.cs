@@ -18,7 +18,7 @@ partial class MainForm
         this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
         this.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
-        this.ClientSize = new System.Drawing.Size(700, 750);
+        this.ClientSize = new System.Drawing.Size(700, 770);
         this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
         this.MaximizeBox = false;
         this.Name = "MainForm";
@@ -76,10 +76,10 @@ partial class MainForm
         lblListenStatus = new Label { Text = "\u25CF", ForeColor = Color.Gray, Location = new Point(290, 10), AutoSize = true, Font = new Font("Arial", 14F) };
         pnlSniffer.Controls.Add(lblListenStatus);
 
-        lblMsgCount = new Label { Text = "Messages: 0", ForeColor = Color.FromArgb(255, 200, 50), Location = new Point(320, 12), AutoSize = true, Font = new Font("Consolas", 9F) };
+        lblMsgCount = new Label { Text = "Total:0 ADD:0 DEL:0", ForeColor = Color.FromArgb(255, 200, 50), Location = new Point(320, 12), AutoSize = true, Font = new Font("Consolas", 9F) };
         pnlSniffer.Controls.Add(lblMsgCount);
 
-        pnlSniffer.Controls.Add(new Label { Text = "Set this PC IP to player IP, click Listen, see incoming data", ForeColor = Color.Gray, Location = new Point(440, 12), AutoSize = true, Font = new Font("Arial", 7F) });
+        pnlSniffer.Controls.Add(new Label { Text = "auto-saves to .log file", ForeColor = Color.Gray, Location = new Point(530, 12), AutoSize = true, Font = new Font("Arial", 7F) });
 
         // === BOARD 1: UNLOAD ===
         grpBoard1 = new GroupBox();
@@ -145,13 +145,17 @@ partial class MainForm
         txtPreview.Text = "{\"trailer_id\":\"001\",\"trailer_number\":\"\u041C530\u0421\u041C\",\"trailer_info\":[\"4101\",\"2005\"]}\r\n{\"trailer_id\":\"001\",\"trailer_number\":\"\u041C530\u0421\u041C\",\"trailer_info\":\"\"} // delete";
         this.Controls.Add(txtPreview);
 
-        // === Log ===
+        // === Log + Save ===
         var lblLog = new Label { Text = "Log:", ForeColor = Color.Gray, Location = new Point(12, 494), AutoSize = true };
         this.Controls.Add(lblLog);
 
+        btnSaveLog = new Button { Text = "Save Log", Location = new Point(610, 490), Size = new Size(78, 22), BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Arial", 8F) };
+        btnSaveLog.Click += btnSaveLog_Click;
+        this.Controls.Add(btnSaveLog);
+
         txtLog = new TextBox();
-        txtLog.Location = new Point(12, 512);
-        txtLog.Size = new Size(676, 228);
+        txtLog.Location = new Point(12, 514);
+        txtLog.Size = new Size(676, 246);
         txtLog.Multiline = true;
         txtLog.ScrollBars = ScrollBars.Vertical;
         txtLog.BackColor = Color.Black;
@@ -232,4 +236,5 @@ partial class MainForm
 
     private TextBox txtPreview;
     private TextBox txtLog;
+    private Button btnSaveLog;
 }

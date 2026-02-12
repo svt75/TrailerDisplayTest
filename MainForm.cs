@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -11,6 +12,9 @@ public partial class MainForm : Form
     private CancellationTokenSource _cts;
     private bool _listening = false;
     private int _msgCount = 0;
+    private int _addCount = 0;
+    private int _delCount = 0;
+    private StreamWriter _logWriter;
 
     public MainForm()
     {
@@ -104,6 +108,12 @@ public partial class MainForm : Form
             int port2 = int.Parse(txtPort2.Text);
             _cts = new CancellationTokenSource();
             _msgCount = 0;
+            _addCount = 0;
+            _delCount = 0;
+
+            var logFile = $"sniffer_{DateTime.Now:yyyyMMdd_HHmmss}.log";
+            _logWriter = new StreamWriter(logFile, true, Encoding.UTF8) { AutoFlush = true };
+            _logWriter.WriteLine($"=== Sniffer started {DateTime.Now:yyyy-MM-dd HH:mm:ss} ports {port1},{port2} ===");
 
             _listener1 = new TcpListener(IPAddress.Any, port1);
             _listener1.Start();
@@ -119,6 +129,7 @@ public partial class MainForm : Form
             lblListenStatus.Text = "\u25CF";
             lblListenStatus.ForeColor = Color.Lime;
             Log($"=== SNIFFER STARTED on ports {port1} and {port2} ===");
+            Log($"Log file: {Path.GetFullPath(logFile)}");
             Log("Waiting for incoming TCP connections...");
         }
         catch (Exception ex)
@@ -131,13 +142,22 @@ public partial class MainForm : Form
 
     private void StopListening()
     {
-        try { _cts?.Cancel(); _listener1?.Stop(); _listener2?.Stop(); } catch { }
+        try
+        {
+            _cts?.Cancel();
+            _listener1?.Stop();
+            _listener2?.Stop();
+            _logWriter?.WriteLine($"=== Sniffer stopped {DateTime.Now:yyyy-MM-dd HH:mm:ss} Total:{_msgCount} ADD:{_addCount} DEL:{_delCount} ===");
+            _logWriter?.Close();
+            _logWriter = null;
+        }
+        catch { }
         _listening = false;
         btnListen.Text = "LISTEN (Sniffer)";
         btnListen.BackColor = Color.FromArgb(170, 120, 0);
         lblListenStatus.Text = "\u25CF";
         lblListenStatus.ForeColor = Color.Gray;
-        Log($"=== SNIFFER STOPPED ({_msgCount} messages received) ===");
+        Log($"=== SNIFFER STOPPED (Total:{_msgCount} ADD:{_addCount} DEL:{_delCount}) ===");
     }
 
     private async Task AcceptLoop(TcpListener listener, int port, string board, CancellationToken ct)
@@ -159,6 +179,7 @@ public partial class MainForm : Form
         {
             var ep = client.Client.RemoteEndPoint?.ToString() ?? "?";
             Invoke(() => Log($"RX [{board}] Connection from {ep}"));
+            _logWriter?.WriteLine($"[{DateTime.Now:HH:mm:ss}] Connection from {ep} -> {board}:{port}");
             using var stream = client.GetStream();
             stream.ReadTimeout = 30000;
             var reader = new StreamReader(stream, Encoding.UTF8);
@@ -171,10 +192,14 @@ public partial class MainForm : Form
                 if (s.StartsWith("{") && s.EndsWith("}"))
                 {
                     _msgCount++;
+                    var isDel = s.Contains("\"trailer_info\":\"\"") || s.Contains("\"trailer_info\": \"\"");
+                    if (isDel) _delCount++; else _addCount++;
+                    var tag = isDel ? "DEL" : "ADD";
+                    _logWriter?.WriteLine($"[{DateTime.Now:HH:mm:ss}] [{board}:{port}] #{_msgCount} [{tag}] {s}");
                     Invoke(() =>
                     {
-                        Log($"RX [{board}:{port}] #{_msgCount} {s}");
-                        lblMsgCount.Text = $"Messages: {_msgCount}";
+                        Log($"RX [{board}:{port}] #{_msgCount} [{tag}] {s}");
+                        lblMsgCount.Text = $"Total:{_msgCount} ADD:{_addCount} DEL:{_delCount}";
                     });
                     buf.Clear();
                 }
@@ -183,9 +208,22 @@ public partial class MainForm : Form
         catch (Exception ex)
         {
             if (!ct.IsCancellationRequested)
+            {
+                _logWriter?.WriteLine($"[{DateTime.Now:HH:mm:ss}] [{board}] Error: {ex.Message}");
                 Invoke(() => Log($"RX [{board}] Error: {ex.Message}"));
+            }
         }
         finally { try { client.Close(); } catch { } }
+    }
+
+    private void btnSaveLog_Click(object sender, EventArgs e)
+    {
+        var sfd = new SaveFileDialog { Filter = "Log files|*.log|Text files|*.txt", FileName = $"sniffer_{DateTime.Now:yyyyMMdd_HHmmss}.log" };
+        if (sfd.ShowDialog() == DialogResult.OK)
+        {
+            File.WriteAllText(sfd.FileName, txtLog.Text, Encoding.UTF8);
+            Log($"Log saved to {sfd.FileName}");
+        }
     }
 
     // ========== SEND CONTROLS ==========
