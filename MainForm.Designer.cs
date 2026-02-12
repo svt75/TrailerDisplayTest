@@ -18,31 +18,31 @@ partial class MainForm
         this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
         this.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
-        this.ClientSize = new System.Drawing.Size(700, 680);
+        this.ClientSize = new System.Drawing.Size(700, 750);
         this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
         this.MaximizeBox = false;
         this.Name = "MainForm";
         this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-        this.Text = "Trailer Display Test";
+        this.Text = "Trailer Display Test + Sniffer";
 
         // Title
         lblTitle = new Label();
         lblTitle.AutoSize = true;
-        lblTitle.Font = new Font("Arial", 16F, FontStyle.Bold);
+        lblTitle.Font = new Font("Arial", 14F, FontStyle.Bold);
         lblTitle.ForeColor = Color.FromArgb(255, 68, 68);
-        lblTitle.Location = new Point(200, 12);
-        lblTitle.Text = "TRAILER DISPLAY TEST";
+        lblTitle.Location = new Point(175, 10);
+        lblTitle.Text = "TRAILER DISPLAY TEST + SNIFFER";
         this.Controls.Add(lblTitle);
 
         // === Connection Panel ===
         pnlConnection = new Panel();
         pnlConnection.BackColor = Color.FromArgb(45, 45, 45);
-        pnlConnection.Location = new Point(12, 48);
+        pnlConnection.Location = new Point(12, 42);
         pnlConnection.Size = new Size(676, 45);
         this.Controls.Add(pnlConnection);
 
         pnlConnection.Controls.Add(new Label { Text = "IP:", ForeColor = Color.White, Location = new Point(10, 13), AutoSize = true });
-        txtIP = new TextBox { Text = "192.168.1.211", Location = new Point(35, 10), Size = new Size(120, 23), BackColor = Color.FromArgb(50, 50, 50), ForeColor = Color.White };
+        txtIP = new TextBox { Text = "192.168.72.199", Location = new Point(35, 10), Size = new Size(120, 23), BackColor = Color.FromArgb(50, 50, 50), ForeColor = Color.White };
         pnlConnection.Controls.Add(txtIP);
 
         pnlConnection.Controls.Add(new Label { Text = "Port B:", ForeColor = Color.FromArgb(255, 100, 100), Location = new Point(168, 13), AutoSize = true });
@@ -60,12 +60,33 @@ partial class MainForm
         lblStatus = new Label { Text = "\u25CF", ForeColor = Color.Gray, Location = new Point(460, 12), AutoSize = true, Font = new Font("Arial", 14F) };
         pnlConnection.Controls.Add(lblStatus);
 
+        // === SNIFFER Panel ===
+        pnlSniffer = new Panel();
+        pnlSniffer.BackColor = Color.FromArgb(50, 40, 20);
+        pnlSniffer.Location = new Point(12, 92);
+        pnlSniffer.Size = new Size(676, 40);
+        this.Controls.Add(pnlSniffer);
+
+        pnlSniffer.Controls.Add(new Label { Text = "TCP SNIFFER:", ForeColor = Color.FromArgb(255, 200, 50), Location = new Point(10, 10), AutoSize = true, Font = new Font("Arial", 9F, FontStyle.Bold) });
+
+        btnListen = new Button { Text = "LISTEN (Sniffer)", Location = new Point(130, 6), Size = new Size(150, 28), BackColor = Color.FromArgb(170, 120, 0), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Arial", 9F, FontStyle.Bold) };
+        btnListen.Click += btnListen_Click;
+        pnlSniffer.Controls.Add(btnListen);
+
+        lblListenStatus = new Label { Text = "\u25CF", ForeColor = Color.Gray, Location = new Point(290, 10), AutoSize = true, Font = new Font("Arial", 14F) };
+        pnlSniffer.Controls.Add(lblListenStatus);
+
+        lblMsgCount = new Label { Text = "Messages: 0", ForeColor = Color.FromArgb(255, 200, 50), Location = new Point(320, 12), AutoSize = true, Font = new Font("Consolas", 9F) };
+        pnlSniffer.Controls.Add(lblMsgCount);
+
+        pnlSniffer.Controls.Add(new Label { Text = "Set this PC IP to player IP, click Listen, see incoming data", ForeColor = Color.Gray, Location = new Point(440, 12), AutoSize = true, Font = new Font("Arial", 7F) });
+
         // === BOARD 1: UNLOAD ===
         grpBoard1 = new GroupBox();
         grpBoard1.Text = " \u0412\u042B\u0413\u0420\u0423\u0417\u041A\u0410 (TCP 5001) ";
         grpBoard1.ForeColor = Color.FromArgb(255, 100, 100);
         grpBoard1.Font = new Font("Arial", 10F, FontStyle.Bold);
-        grpBoard1.Location = new Point(12, 100);
+        grpBoard1.Location = new Point(12, 138);
         grpBoard1.Size = new Size(330, 195);
         this.Controls.Add(grpBoard1);
 
@@ -76,7 +97,7 @@ partial class MainForm
         grpBoard2.Text = " \u041F\u041E\u0413\u0420\u0423\u0417\u041A\u0410 (TCP 5002) ";
         grpBoard2.ForeColor = Color.FromArgb(100, 255, 100);
         grpBoard2.Font = new Font("Arial", 10F, FontStyle.Bold);
-        grpBoard2.Location = new Point(358, 100);
+        grpBoard2.Location = new Point(358, 138);
         grpBoard2.Size = new Size(330, 195);
         this.Controls.Add(grpBoard2);
 
@@ -85,7 +106,7 @@ partial class MainForm
         // === Global Buttons ===
         pnlGlobal = new Panel();
         pnlGlobal.BackColor = Color.FromArgb(45, 45, 45);
-        pnlGlobal.Location = new Point(12, 305);
+        pnlGlobal.Location = new Point(12, 340);
         pnlGlobal.Size = new Size(676, 85);
         this.Controls.Add(pnlGlobal);
 
@@ -110,11 +131,11 @@ partial class MainForm
         pnlGlobal.Controls.Add(btnClearMulti);
 
         // === JSON Preview ===
-        var lblPreview = new Label { Text = "JSON Format:", ForeColor = Color.Gray, Location = new Point(12, 398), AutoSize = true, Font = new Font("Arial", 8F) };
+        var lblPreview = new Label { Text = "JSON Format:", ForeColor = Color.Gray, Location = new Point(12, 432), AutoSize = true, Font = new Font("Arial", 8F) };
         this.Controls.Add(lblPreview);
 
         txtPreview = new TextBox();
-        txtPreview.Location = new Point(12, 415);
+        txtPreview.Location = new Point(12, 448);
         txtPreview.Size = new Size(676, 40);
         txtPreview.Multiline = true;
         txtPreview.BackColor = Color.FromArgb(40, 40, 40);
@@ -125,12 +146,12 @@ partial class MainForm
         this.Controls.Add(txtPreview);
 
         // === Log ===
-        var lblLog = new Label { Text = "Log:", ForeColor = Color.Gray, Location = new Point(12, 462), AutoSize = true };
+        var lblLog = new Label { Text = "Log:", ForeColor = Color.Gray, Location = new Point(12, 494), AutoSize = true };
         this.Controls.Add(lblLog);
 
         txtLog = new TextBox();
-        txtLog.Location = new Point(12, 480);
-        txtLog.Size = new Size(676, 190);
+        txtLog.Location = new Point(12, 512);
+        txtLog.Size = new Size(676, 228);
         txtLog.Multiline = true;
         txtLog.ScrollBars = ScrollBars.Vertical;
         txtLog.BackColor = Color.Black;
@@ -196,6 +217,11 @@ partial class MainForm
     private TextBox txtIP, txtPort1, txtPort2;
     private Button btnTest;
     private Label lblStatus;
+
+    private Panel pnlSniffer;
+    private Button btnListen;
+    private Label lblListenStatus;
+    private Label lblMsgCount;
 
     private GroupBox grpBoard1, grpBoard2;
     private TextBox txtId1, txtNumber1, txtInfo1;

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -5,6 +6,12 @@ namespace TrailerDisplayTest;
 
 public partial class MainForm : Form
 {
+    private TcpListener _listener1;
+    private TcpListener _listener2;
+    private CancellationTokenSource _cts;
+    private bool _listening = false;
+    private int _msgCount = 0;
+
     public MainForm()
     {
         InitializeComponent();
@@ -26,14 +33,14 @@ public partial class MainForm : Form
         {
             using var client = new TcpClient();
             client.Connect(ip, port);
-            var data = Encoding.UTF8.GetBytes(json + System.Environment.NewLine);
+            var data = Encoding.UTF8.GetBytes(json + "\n");
             client.GetStream().Write(data, 0, data.Length);
-            Log($"TCP {ip}:{port} -> {json}");
+            Log($"TX {ip}:{port} -> {json}");
             return true;
         }
         catch (Exception ex)
         {
-            Log($"TCP Error ({ip}:{port}): {ex.Message}");
+            Log($"TX Error ({ip}:{port}): {ex.Message}");
             return false;
         }
     }
@@ -82,7 +89,106 @@ public partial class MainForm : Form
         }
     }
 
-    // --- Board 1: UNLOAD ---
+    // ========== TCP SNIFFER ==========
+    private void btnListen_Click(object sender, EventArgs e)
+    {
+        if (_listening) StopListening();
+        else StartListening();
+    }
+
+    private void StartListening()
+    {
+        try
+        {
+            int port1 = int.Parse(txtPort1.Text);
+            int port2 = int.Parse(txtPort2.Text);
+            _cts = new CancellationTokenSource();
+            _msgCount = 0;
+
+            _listener1 = new TcpListener(IPAddress.Any, port1);
+            _listener1.Start();
+            Task.Run(() => AcceptLoop(_listener1, port1, "UNLOAD", _cts.Token));
+
+            _listener2 = new TcpListener(IPAddress.Any, port2);
+            _listener2.Start();
+            Task.Run(() => AcceptLoop(_listener2, port2, "LOAD", _cts.Token));
+
+            _listening = true;
+            btnListen.Text = "STOP LISTEN";
+            btnListen.BackColor = Color.FromArgb(200, 50, 50);
+            lblListenStatus.Text = "\u25CF";
+            lblListenStatus.ForeColor = Color.Lime;
+            Log($"=== SNIFFER STARTED on ports {port1} and {port2} ===");
+            Log("Waiting for incoming TCP connections...");
+        }
+        catch (Exception ex)
+        {
+            Log($"Listen Error: {ex.Message}");
+            lblListenStatus.Text = "\u25CF";
+            lblListenStatus.ForeColor = Color.Red;
+        }
+    }
+
+    private void StopListening()
+    {
+        try { _cts?.Cancel(); _listener1?.Stop(); _listener2?.Stop(); } catch { }
+        _listening = false;
+        btnListen.Text = "LISTEN (Sniffer)";
+        btnListen.BackColor = Color.FromArgb(170, 120, 0);
+        lblListenStatus.Text = "\u25CF";
+        lblListenStatus.ForeColor = Color.Gray;
+        Log($"=== SNIFFER STOPPED ({_msgCount} messages received) ===");
+    }
+
+    private async Task AcceptLoop(TcpListener listener, int port, string board, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var client = await listener.AcceptTcpClientAsync();
+                _ = Task.Run(() => HandleClient(client, port, board, ct));
+            }
+            catch { if (!ct.IsCancellationRequested) break; }
+        }
+    }
+
+    private void HandleClient(TcpClient client, int port, string board, CancellationToken ct)
+    {
+        try
+        {
+            var ep = client.Client.RemoteEndPoint?.ToString() ?? "?";
+            Invoke(() => Log($"RX [{board}] Connection from {ep}"));
+            using var stream = client.GetStream();
+            stream.ReadTimeout = 30000;
+            var reader = new StreamReader(stream, Encoding.UTF8);
+            var buf = new StringBuilder();
+            int ch;
+            while ((ch = reader.Read()) != -1 && !ct.IsCancellationRequested)
+            {
+                buf.Append((char)ch);
+                var s = buf.ToString().Trim();
+                if (s.StartsWith("{") && s.EndsWith("}"))
+                {
+                    _msgCount++;
+                    Invoke(() =>
+                    {
+                        Log($"RX [{board}:{port}] #{_msgCount} {s}");
+                        lblMsgCount.Text = $"Messages: {_msgCount}";
+                    });
+                    buf.Clear();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!ct.IsCancellationRequested)
+                Invoke(() => Log($"RX [{board}] Error: {ex.Message}"));
+        }
+        finally { try { client.Close(); } catch { } }
+    }
+
+    // ========== SEND CONTROLS ==========
     private void btnSend1_Click(object sender, EventArgs e)
     {
         var json = BuildJson(txtId1.Text, txtNumber1.Text, txtInfo1.Text);
@@ -101,10 +207,9 @@ public partial class MainForm : Form
         txtId1.Text = "001";
         txtNumber1.Text = "\u041C530\u0421\u041C";
         txtInfo1.Text = "4101, 2005";
-        Log("Filled test data (unload)");
+        Log("Filled test (unload)");
     }
 
-    // --- Board 2: LOAD ---
     private void btnSend2_Click(object sender, EventArgs e)
     {
         var json = BuildJson(txtId2.Text, txtNumber2.Text, txtInfo2.Text);
@@ -123,10 +228,9 @@ public partial class MainForm : Form
         txtId2.Text = "002";
         txtNumber2.Text = "\u0410777\u0410\u0410";
         txtInfo2.Text = "3022";
-        Log("Filled test data (load)");
+        Log("Filled test (load)");
     }
 
-    // --- Global ---
     private void btnSendBoth_Click(object sender, EventArgs e)
     {
         btnSend1_Click(sender, e);
@@ -151,15 +255,12 @@ public partial class MainForm : Form
         var ip = txtIP.Text;
         int port1 = int.Parse(txtPort1.Text);
         int port2 = int.Parse(txtPort2.Text);
-
         SendTcp(ip, port1, BuildJson("T001", "\u041C530\u0421\u041C", "4101, 2005"));
         SendTcp(ip, port1, BuildJson("T002", "\u041A123\u0410\u0412", "3010"));
         SendTcp(ip, port1, BuildJson("T003", "\u041D456\u041E\u041F", "5200, 5201, 5202"));
-
         SendTcp(ip, port2, BuildJson("T004", "\u0410777\u0410\u0410", "3022"));
         SendTcp(ip, port2, BuildJson("T005", "\u0412999\u0412\u0412", "1001, 1002"));
         SendTcp(ip, port2, BuildJson("T006", "\u0420111\u0420\u0420", "7050"));
-
         Log("=== Multi-test sent ===");
     }
 
@@ -169,12 +270,10 @@ public partial class MainForm : Form
         var ip = txtIP.Text;
         int port1 = int.Parse(txtPort1.Text);
         int port2 = int.Parse(txtPort2.Text);
-
         for (int i = 1; i <= 3; i++)
             SendTcp(ip, port1, BuildJson($"T00{i}", "", ""));
         for (int i = 4; i <= 6; i++)
             SendTcp(ip, port2, BuildJson($"T00{i}", "", ""));
-
         Log("=== Multi-test cleared ===");
     }
 }
